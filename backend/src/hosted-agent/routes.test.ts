@@ -103,14 +103,21 @@ const upstreamHeaders = (fetchFn: ReturnType<typeof createRejectingFetch>, call 
 const chatBody = (messages: unknown[] = [{ id: 'm1', role: 'user', parts: [{ type: 'text', text: 'Hi' }] }]) =>
   JSON.stringify({ id: 'chat-1', messages, trigger: 'submit-message' })
 
-const postChat = (app: Elysia, body = chatBody()) =>
+const postChat = (app: Elysia, body = chatBody(), headers: Record<string, string> = {}) =>
   app.handle(
     new Request('http://localhost/agent/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body,
     }),
   )
+
+/** Run one chat and return the system prompt the model received. */
+const sentSystemPrompt = async (app: Elysia, model: MockLanguageModelV3, headers: Record<string, string> = {}) => {
+  await (await postChat(app, chatBody(), headers)).text()
+  const [message] = model.doStreamCalls[0].prompt
+  return message.role === 'system' ? message.content : undefined
+}
 
 /** Mount the routes with test settings; anything not overridden falls back to an enabled agent. */
 const createApp = (
@@ -428,7 +435,7 @@ describe('createHostedAgentRoutes', () => {
     const [call] = model.doStreamCalls
     expect(call.maxOutputTokens).toBe(agentMaxOutputTokens)
     expect(call.prompt).toEqual([
-      { role: 'system', content: 'You are the deployment agent.' },
+      { role: 'system', content: expect.stringMatching(/^You are the deployment agent\.\n\n# Language\n/) },
       { role: 'user', content: [{ type: 'text', text: 'Hi' }] },
     ])
     expect(recordUsage).toHaveBeenCalledTimes(1)
@@ -440,6 +447,35 @@ describe('createHostedAgentRoutes', () => {
         counts: { promptTokens: 12, completionTokens: 3, totalTokens: 15, cacheCreationTokens: 0, cacheReadTokens: 0 },
       }),
     ])
+  })
+
+  describe('reply language', () => {
+    it('falls back to the app language named from X-App-Language', async () => {
+      const system = await sentSystemPrompt(createMockedApp(), model, { 'X-App-Language': 'de' })
+      expect(system).toContain('or use German if the conversation has none yet')
+    })
+
+    it('leaves out the tool-result rule, since the agent has no tools', async () => {
+      const system = await sentSystemPrompt(createMockedApp(), model)
+      expect(system).toContain('Reply in the language of the conversation.')
+      expect(system).not.toContain('Summarize tool and search results')
+    })
+
+    it.each([
+      ['a missing header', {}],
+      ['an unknown tag', { 'X-App-Language': 'xx-YY' }],
+    ])('falls back to English for %s', async (_case, headers) => {
+      const system = await sentSystemPrompt(createMockedApp(), model, headers)
+      expect(system).toContain('or use English if the conversation has none yet')
+      expect(system).not.toContain('xx-YY')
+    })
+
+    it('sends the language rule alone when AGENT_SYSTEM_PROMPT is empty', async () => {
+      const app = createMockedApp({ settings: { agentSystemPrompt: '' } })
+      const system = await sentSystemPrompt(app, model, { 'X-App-Language': 'ja' })
+      expect(system).toStartWith('# Language\n')
+      expect(system).toContain('or use Japanese if the conversation has none yet')
+    })
   })
 
   it('logs a failed ledger write with a safe message', async () => {

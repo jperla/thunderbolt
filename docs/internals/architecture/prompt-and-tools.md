@@ -58,8 +58,10 @@ Two ordering invariants:
   still rewrites `\(…\)` / `\[…\]`, because models drift. Dropping either regresses equation
   rendering.
 
-`# Language` directs the _reply_ language. The prompt body and the injected date (`sourceLocale`)
-stay English ([AGENTS.md](../../../AGENTS.md)).
+`# Language` directs the _reply_ language. Its text lives in
+[`shared/i18n/language-instruction.ts`](../../../shared/i18n/language-instruction.ts), which the
+hosted agent also uses, and a test in `src/ai/prompt.test.ts` pins it byte for byte. The prompt
+body and the injected date (`sourceLocale`) stay English ([AGENTS.md](../../../AGENTS.md)).
 
 ## Conditional fragments
 

@@ -202,6 +202,8 @@ The agent is also offered through agent discovery, and the discovery response na
 
 A request may carry at most 2 MB and 200 messages (`413` and `400` beyond that), and a reply stops at 8,192 output tokens or after 2 minutes upstream. The agent takes text only, whatever the model: a request carrying a file attachment is refused with `400 AGENT_FILES_UNSUPPORTED`.
 
+The agent replies in the language of the conversation. When the conversation does not establish one, it falls back to the app language the client sends in the `X-App-Language` header, or to English when the header is missing or names a language the app does not ship. This rule is appended after `AGENT_SYSTEM_PROMPT`, so your prompt still comes first.
+
 | Variable                          | Default     | What it does                                                                |
 | --------------------------------- | ----------- | --------------------------------------------------------------------------- |
 | `AGENT_ENABLED`                   | `false`     | Mounts the hosted agent. When `false` the route does not exist.             |

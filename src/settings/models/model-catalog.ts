@@ -138,8 +138,12 @@ export const fetchModelsForProvider = async ({ provider, apiKey, url }: CatalogR
     return []
   }
 
+  // TrustedRouter's catalog is public; sending the key would add a CORS
+  // preflight its API doesn't answer. It stays key-gated in the form only so
+  // the large catalog loads once the user has committed to the provider.
+  const sendsKey = Boolean(apiKey) && provider !== 'trustedrouter'
   const response = await http
-    .get(endpoint, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {}, fetch })
+    .get(endpoint, { headers: sendsKey ? { Authorization: `Bearer ${apiKey}` } : {}, fetch })
     .json<{ data: ModalityCatalogRow[] }>()
   return response.data
     .map((model) => ({

@@ -18,7 +18,7 @@ import { AuthProvider, DatabaseProvider, HttpClientProvider } from '@/contexts'
 import { createMockAuthClient } from '@/test-utils/auth-client'
 import { createMockHttpClient } from '@/test-utils/http-client'
 import { PowerSyncMockProvider } from '@/test-utils/powersync-mock'
-import { showRevokedDeviceModalEvent, showSignInModalEvent, signInSuccessEvent } from './use-credential-events'
+import { showSignInModalEvent, signInSuccessEvent } from './use-credential-events'
 import { usePowerSyncCredentialsInvalidListener } from './use-powersync-credentials-invalid-listener'
 import { getDb } from '@/db/database'
 
@@ -111,10 +111,7 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
       expect(mockReplace).toHaveBeenCalledWith('/account-deleted')
     })
 
-    it('dispatches showRevokedDeviceModalEvent when reason is device_revoked', () => {
-      const revokedModalListener = mock()
-      window.addEventListener(showRevokedDeviceModalEvent, revokedModalListener)
-
+    it('clears local data and redirects to /device-revoked when reason is device_revoked', async () => {
       renderHook(() => usePowerSyncCredentialsInvalidListener({ clearLocalData: mockClearLocalData }), {
         wrapper: createTestProvider(),
       })
@@ -123,10 +120,12 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
         dispatchCredentialsInvalid('device_revoked')
       })
 
-      expect(revokedModalListener).toHaveBeenCalled()
-      expect(mockReplace).not.toHaveBeenCalled()
+      await act(async () => {
+        await getClock().runAllAsync()
+      })
 
-      window.removeEventListener(showRevokedDeviceModalEvent, revokedModalListener)
+      expect(mockClearLocalData).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith('/device-revoked')
     })
 
     it('redirects to / when reason is device_id_taken', async () => {
@@ -236,9 +235,7 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
     it('does not dispatch showSignInModalEvent when device_revoked has already fired', () => {
       setAuthToken(authToken)
       const signInModalListener = mock()
-      const revokedModalListener = mock()
       window.addEventListener(showSignInModalEvent, signInModalListener)
-      window.addEventListener(showRevokedDeviceModalEvent, revokedModalListener)
 
       renderHook(() => usePowerSyncCredentialsInvalidListener({ clearLocalData: mockClearLocalData }), {
         wrapper: createTestProvider(),
@@ -249,19 +246,16 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
         dispatchCredentialsInvalid('session_expired')
       })
 
-      expect(revokedModalListener).toHaveBeenCalled()
       expect(signInModalListener).not.toHaveBeenCalled()
+      expect(getAuthToken()).toBe(authToken)
 
       window.removeEventListener(showSignInModalEvent, signInModalListener)
-      window.removeEventListener(showRevokedDeviceModalEvent, revokedModalListener)
     })
 
     it("calls setSyncEnabled(false) when reason is 'sync_not_permitted' and does NOT clear data or dispatch modals", () => {
       setAuthToken(authToken)
       const signInModalListener = mock()
-      const revokedModalListener = mock()
       window.addEventListener(showSignInModalEvent, signInModalListener)
-      window.addEventListener(showRevokedDeviceModalEvent, revokedModalListener)
       mockSetSyncEnabled.mockClear()
 
       renderHook(() => usePowerSyncCredentialsInvalidListener({ clearLocalData: mockClearLocalData }), {
@@ -277,20 +271,15 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
       expect(mockClearLocalData).not.toHaveBeenCalled()
       expect(mockReplace).not.toHaveBeenCalled()
       expect(signInModalListener).not.toHaveBeenCalled()
-      expect(revokedModalListener).not.toHaveBeenCalled()
 
       window.removeEventListener(showSignInModalEvent, signInModalListener)
-      window.removeEventListener(showRevokedDeviceModalEvent, revokedModalListener)
     })
   })
 
   describe('device table: revoked', () => {
-    it('dispatches showRevokedDeviceModalEvent when device has revokedAt', async () => {
+    it('clears local data and redirects to /device-revoked when device has revokedAt', async () => {
       const revokedAt = new Date().toISOString()
       await setupAuthAndDevice({ revokedAt })
-
-      const revokedModalListener = mock()
-      window.addEventListener(showRevokedDeviceModalEvent, revokedModalListener)
 
       renderHook(() => usePowerSyncCredentialsInvalidListener({ clearLocalData: mockClearLocalData }), {
         wrapper: createTestProvider(),
@@ -300,10 +289,8 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
         await getClock().runAllAsync()
       })
 
-      expect(revokedModalListener).toHaveBeenCalled()
-      expect(mockReplace).not.toHaveBeenCalled()
-
-      window.removeEventListener(showRevokedDeviceModalEvent, revokedModalListener)
+      expect(mockClearLocalData).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith('/device-revoked')
     })
   })
 

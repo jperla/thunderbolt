@@ -9,13 +9,13 @@ import { useSyncSetup } from '@/hooks/use-sync-setup'
 import { useApprovalPolling } from '@/hooks/use-approval-polling'
 import { checkApprovalAndUnwrap } from '@/services/encryption'
 import { cancelPending } from '@/api/encryption'
+import { powersyncCredentialsInvalid } from '@/db/powersync/connector'
 import { useHttpClient } from '@/contexts'
 import { RecoveryKeyDisplayStep } from './recovery-key-display-step'
 import { ApprovalWaitingStep } from './approval-waiting-step'
 import { RecoveryKeyEntryStep } from './recovery-key-entry-step'
 import { GradientCircleCheck } from '@/components/ui/gradient-circle-check'
 import { IconCircle } from '@/components/onboarding/icon-circle'
-import { showRevokedDeviceModalEvent } from '@/hooks/use-credential-events'
 import { useYieldToMigration } from '@/hooks/use-yield-to-migration'
 import { ArrowLeft, Loader2, Lock, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useCallback, useRef } from 'react'
@@ -97,7 +97,7 @@ export const SyncSetupModal = ({ open, onOpenChange, onComplete }: SyncSetupModa
 
   const handleRevoked = () => {
     onOpenChange(false)
-    window.dispatchEvent(new CustomEvent(showRevokedDeviceModalEvent))
+    window.dispatchEvent(new CustomEvent(powersyncCredentialsInvalid, { detail: { reason: 'device_revoked' } }))
   }
 
   const handleDenied = () => {

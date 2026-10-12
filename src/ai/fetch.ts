@@ -249,7 +249,7 @@ export const mergeMcpTools = async (
  *  OpenAI-wire provider construction needs ({@link createModel} for the legacy
  *  Vercel SDK, the in-browser Pi harness for the built-in agent). `fetch` is the
  *  provider-specific app fetch — the universal proxy fetch for
- *  `openai`/`custom`/`openrouter`, or the SSO-aware fetch for `thunderbolt`. */
+ *  `openai`/`custom`/`openrouter`/`trustedrouter`, or the SSO-aware fetch for `thunderbolt`. */
 export type OpenAiCompatConnection = {
   baseURL: string
   apiKey: string
@@ -323,6 +323,10 @@ export const resolveOpenAiCompatConnection = (
     case 'openrouter':
       return modelConfig.apiKey
         ? { baseURL: 'https://openrouter.ai/api/v1', apiKey: modelConfig.apiKey, fetch: getProxyFetch() }
+        : null
+    case 'trustedrouter':
+      return modelConfig.apiKey
+        ? { baseURL: 'https://api.trustedrouter.com/v1', apiKey: modelConfig.apiKey, fetch: getProxyFetch() }
         : null
     default:
       return null
@@ -465,6 +469,19 @@ export const createModel = async (modelConfig: Model, getProxyFetch: () => Fetch
         fetch: conn.fetch,
       })
       return openrouter(modelConfig.model)
+    }
+    case 'trustedrouter': {
+      const conn = resolveOpenAiCompatConnection(modelConfig, getProxyFetch)
+      if (!conn) {
+        throw new Error('No API key provided')
+      }
+      const trustedrouter = createOpenAICompatible({
+        name: 'trustedrouter',
+        baseURL: conn.baseURL,
+        apiKey: conn.apiKey,
+        fetch: conn.fetch,
+      })
+      return trustedrouter(modelConfig.model)
     }
     default:
       throw new Error(`Unsupported provider: ${modelConfig.provider}`)

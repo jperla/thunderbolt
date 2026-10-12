@@ -7,6 +7,7 @@ import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from '@/da
 import { powersyncCredentialsInvalid } from '@/db/powersync/connector'
 import { devicesTable } from '@/db/tables'
 import { getAuthToken, setAuthToken } from '@/lib/auth-token'
+import { createClient } from '@/lib/http'
 import { createTestProvider } from '@/test-utils/test-provider'
 import { getClock } from '@/testing-library'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -179,6 +180,33 @@ describe('usePowerSyncCredentialsInvalidListener', () => {
       expect(mockReplace).not.toHaveBeenCalled()
 
       window.removeEventListener(showSignInModalEvent, signInModalListener)
+    })
+
+    it('asks the session check once on session_expired, so a revoked device can still find out', async () => {
+      // No token, so AuthProvider's own mount-time check stays quiet. AuthProvider also
+      // mounts this listener itself, so the test sees one probe per instance.
+      const requestedUrls: string[] = []
+      const httpClient = createClient({
+        prefixUrl: 'http://test-api.local',
+        fetch: async (input) => {
+          requestedUrls.push(input instanceof Request ? input.url : String(input))
+          return new Response('null', { status: 200, headers: { 'Content-Type': 'application/json' } })
+        },
+      })
+
+      renderHook(() => usePowerSyncCredentialsInvalidListener({ clearLocalData: mockClearLocalData }), {
+        wrapper: createTestProvider({ httpClient }),
+      })
+
+      act(() => {
+        dispatchCredentialsInvalid('session_expired')
+      })
+      await act(async () => {
+        await getClock().runAllAsync()
+      })
+
+      expect(requestedUrls.length).toBeGreaterThan(0)
+      expect(new Set(requestedUrls)).toEqual(new Set(['http://test-api.local/api/auth/get-session']))
     })
 
     it('does not re-dispatch showSignInModalEvent for repeated session_expired events', () => {

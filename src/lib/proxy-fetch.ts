@@ -28,6 +28,7 @@ import {
 import { encodeWsBearer, wsBearerSubprotocolPrefix, wsCarrierSubprotocol } from '@shared/ws-bearer'
 import { appVersionHeader } from './app-version'
 import { handleAppVersionUnsupported } from './app-version-unsupported'
+import { handleSessionRejected } from '@/lib/session-rejected'
 import { getAuthToken } from './auth-token'
 import { getCapabilities, isTauri } from './platform'
 
@@ -230,6 +231,7 @@ export const createProxyFetch = (options: ProxyFetchOptions): FetchFn => {
     const f = options.fetchImpl ?? globalThis.fetch
     const proxyResponse = await f(proxyRequest)
     await raiseOuterHopVersionBlock(proxyResponse)
+    await handleSessionRejected(proxyResponse)
     return unwrapHostedResponse(proxyResponse)
   }
   return Object.assign(proxyFetch, { preconnect: () => Promise.resolve(false) })

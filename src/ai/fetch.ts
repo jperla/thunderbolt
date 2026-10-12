@@ -16,6 +16,7 @@ import { buildMiniAppToolsPromptSection, createMiniAppTools, toToolsetName } fro
 import { buildProjectPromptSection } from '@/projects/project-prompt'
 import { createProjectSearchTool } from '@/projects/project-search-tool'
 import { createTurnBudget, createTurnBudgetExhaustedError, type TurnBudgetConsumer } from '@/ai/retry-budget'
+import { withTrustedRouterAttestation } from '@/ai/trustedrouter-attestation'
 import type { TurnTelemetry } from '@/ai/turn-telemetry'
 import { selectMinimalMode, useConfigStore } from '@/api/config-store'
 import type { WebToolBudget } from '@/ai/web-tool-budget'
@@ -310,8 +311,14 @@ export const resolveOpenAiCompatConnection = (
         ? { baseURL: 'https://openrouter.ai/api/v1', apiKey: modelConfig.apiKey, fetch: getProxyFetch() }
         : null
     case 'trustedrouter':
+      // Every request waits for an in-app check of the gateway's attestation
+      // (document-level, not TLS-bound; see trustedrouter-attestation.ts).
       return modelConfig.apiKey
-        ? { baseURL: 'https://api.trustedrouter.com/v1', apiKey: modelConfig.apiKey, fetch: getProxyFetch() }
+        ? {
+            baseURL: 'https://api.trustedrouter.com/v1',
+            apiKey: modelConfig.apiKey,
+            fetch: withTrustedRouterAttestation(getProxyFetch()),
+          }
         : null
     default:
       return null

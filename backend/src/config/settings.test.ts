@@ -899,7 +899,7 @@ describe('Config Settings', () => {
       expect(settings.powersyncUrl).toBe('')
       expect(settings.powersyncJwtKid).toBe('')
       expect(settings.powersyncJwtSecret).toBe('')
-      // The default doubles as the post-revocation read window for the sync stream.
+      // Bounds how long a device can keep reconnecting to the sync stream.
       expect(settings.powersyncTokenExpirySeconds).toBe(300)
     })
 

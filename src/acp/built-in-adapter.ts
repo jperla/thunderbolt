@@ -163,6 +163,7 @@ const piProviders = new Set<Model['provider']>([
   'openai',
   'custom',
   'openrouter',
+  'trustedrouter',
   'thunderbolt',
   'tinfoil',
 ])

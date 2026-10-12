@@ -866,3 +866,17 @@ describe('logical-turn citation registry', () => {
     }
   })
 })
+
+describe('resolveOpenAiCompatConnection (trustedrouter)', () => {
+  const trustedRouterModel = (apiKey: string | null): Model =>
+    ({ provider: 'trustedrouter', url: null, apiKey }) as unknown as Model
+
+  it('returns null without an API key', () => {
+    expect(resolveOpenAiCompatConnection(trustedRouterModel(null), () => stubProxyFetch)).toBeNull()
+  })
+
+  it('targets the TrustedRouter API through the proxy fetch', () => {
+    const conn = resolveOpenAiCompatConnection(trustedRouterModel('sk-tr-test'), () => stubProxyFetch)
+    expect(conn).toEqual({ baseURL: 'https://api.trustedrouter.com/v1', apiKey: 'sk-tr-test', fetch: stubProxyFetch })
+  })
+})

@@ -203,6 +203,7 @@ export const createTrustedRouterAttestation = ({
   return { ensureVerified, withAttestation }
 }
 
-export const { withAttestation: withTrustedRouterAttestation } = createTrustedRouterAttestation({
-  verifyGateway: (attestationFetch) => verifyTrustedRouterGateway(attestationFetch),
-})
+export const { ensureVerified: ensureTrustedRouterVerified, withAttestation: withTrustedRouterAttestation } =
+  createTrustedRouterAttestation({
+    verifyGateway: (attestationFetch) => verifyTrustedRouterGateway(attestationFetch),
+  })
